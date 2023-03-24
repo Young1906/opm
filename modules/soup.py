@@ -22,14 +22,12 @@ def get_chaps():
     # List of all a tag within container
     ls_a_tags = container.find_all("a");
 
-    for a in ls_a_tags:
+    for a in ls_a_tags[::-1]:
         yield a.contents[0], a["href"];
 
 
 def get_chap_imgs(url):
     # sample
-    url = "https://w3.mangaonepunch.com/manga/one-punch-man-chapter-177/"
-    
     headers = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET',
@@ -46,9 +44,38 @@ def get_chap_imgs(url):
 
     ls_pictures = entry_inner.find_all("picture");
 
+    out = [];
     for pic in ls_pictures:
         img = pic.find("img");
-        yield img["src"];
+        out.append( img["src"] );
+
+    return out;
+
+def get_chap_imgs_v0(url):
+    # sample
+    headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Max-Age': '3600',
+        'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0'
+    };
+    
+    req = requests.get(url, headers);
+    soup = BeautifulSoup(req.content, "html.parser");
+    entry_inner = soup.find(
+            "div",
+            {"class":"entry-inner"});
+
+    ls_pictures = entry_inner.find_all("img");
+
+    out = [];
+
+    for pic in ls_pictures:
+        out.append( pic["src"] );
+
+    return out;
+
 
 
 def save_img(url, fn):
@@ -60,19 +87,24 @@ def parse_name(fn:str)->str:
     return out.lower();
 
 def get_fn_name(url):
-    return url.split("/")[-1];
+    fn = url.split("/")[-1];
+    return fn.rjust(7, '0');
 
 
 def crawl():
     chaps = get_chaps();
 
     for (chap_name, url) in chaps:
-        print(f"[+] Downloading chap {chap_name}");
+        print(f"[+] Downloading chap {chap_name}, url = {url}");
+
 
         fn_chap = parse_name(chap_name);
         os.mkdir(f"data/{fn_chap}");
 
-        imgs = get_chap_imgs(url);
+        imgs = get_chap_imgs_v0(url);
+
+        if len(imgs) == 0:
+            imgs = get_chap_imgs(url);
 
         for img_url in imgs:
             fn_name = get_fn_name(img_url);
